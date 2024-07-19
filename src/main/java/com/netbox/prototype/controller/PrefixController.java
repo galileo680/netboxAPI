@@ -1,5 +1,6 @@
 package com.netbox.prototype.controller;
 
+import com.netbox.prototype.model.MultiplePrefixes;
 import com.netbox.prototype.model.Prefix;
 import com.netbox.prototype.service.PrefixService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/prefixes")
@@ -31,6 +34,12 @@ public class PrefixController {
     public Mono<ResponseEntity<Prefix>> createPrefix(@RequestBody Prefix prefix) {
         return prefixService.createPrefix(prefix)
                 .map(createdPrefix -> ResponseEntity.status(HttpStatus.CREATED).body(createdPrefix));
+    }
+
+    // POST Create multiple prefixes
+    @PostMapping("create-multiple")
+    public Mono<ResponseEntity<List<String>>> createMultiplePrefixes(@RequestBody MultiplePrefixes multiplePrefixes) {
+        return prefixService.createMultiplePrefixes(multiplePrefixes);
     }
 
 }
