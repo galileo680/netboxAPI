@@ -43,58 +43,56 @@ public class prefixServiceImpl implements PrefixService {
                 .bodyToMono(Prefix.class);
     }
 
-    public Mono<ResponseEntity<List<String>>> createMultiplePrefixes(MultiplePrefixes request) {
+    @Override
+    public Mono<ResponseEntity<List<Prefix>>> createPrefixes(MultiplePrefixes request) {
         if (request.getCount() <= 0 || request.getLength() <= 0) {
             return Mono.just(ResponseEntity.badRequest().build());
         }
 
-        // Generowanie prefixów
-        List<String> prefixes = generatePrefixes(request.getCount(), request.getLength(), request.getParentPrefix());
+        List<String> prefixStrings = generatePrefixes(request.getCount(), request.getLength(), request.getPrefix());
 
-        System.out.println(Arrays.toString(prefixes.toArray()));
+        List<Mono<Prefix>> prefixMonos = prefixStrings.stream()
+                .map(this::createPrefixInNetBox)
+                .collect(Collectors.toList());
 
-        // Wstawianie do NetBox
-        return Mono.zip(
-                prefixes.stream()
-                        .map(prefix -> createPrefixInNetBox(prefix))
-                        .collect(Collectors.toList()),
-                results -> ResponseEntity.status(HttpStatus.CREATED).body(prefixes)
-        ).onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()));
+        return Mono.zip(prefixMonos, results -> {
+            List<Prefix> createdPrefixes = new ArrayList<>();
+            for (Object result : results) {
+                if (result instanceof Prefix) {
+                    createdPrefixes.add((Prefix) result);
+                }
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdPrefixes);
+        }).onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()));
     }
 
-
-    public List<String> generatePrefixes(int count, int length, String parentPrefix) {
-        List<String> prefixes = new ArrayList<>();
-        String basePrefix = parentPrefix.split("/")[0]; // Base IP
-        int prefixLength = Integer.parseInt(parentPrefix.split("/")[1]); // Base Prefix Length
-
-        // Generowanie prefixów
-        for (int i = 0; i < count; i++) {
-            String newPrefix = basePrefix + "/" + (prefixLength + length);
-            prefixes.add(newPrefix);
-            basePrefix = incrementIPAddress(basePrefix);
-        }
-
-        return prefixes;
-    }
-
-    // Helper function to increment IP address
-    private String incrementIPAddress(String ip) {
-        String[] parts = ip.split("\\.");
-        int lastPart = Integer.parseInt(parts[3]) + 1;
-        return parts[0] + "." + parts[1] + "." + parts[2] + "." + lastPart;
-    }
-
-    public Mono<String> createPrefixInNetBox(WebClient webClient, String prefix) {
+    private Mono<Prefix> createPrefixInNetBox(String prefix) {
+        Prefix prefixObj = new Prefix(prefix, "Description for " + prefix);
         return webClient.post()
-                .uri(uriBuilder -> uriBuilder.path("/").build())
-                .bodyValue(Collections.singletonMap("prefix", prefix)) // Wysyłanie ciała żądania jako JSON
+                .uri("/prefixes/")
+                .bodyValue(prefixObj)
                 .retrieve()
-                .bodyToMono(String.class)
+                .bodyToMono(Prefix.class)
                 .onErrorResume(e -> {
                     System.err.println("Error creating prefix in NetBox: " + e.getMessage());
                     return Mono.empty();
                 });
+    }
+
+    private List<String> generatePrefixes(int count, int length, String basePrefix) {
+        List<String> prefixes = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            String newPrefix = basePrefix + "/" + length;
+            prefixes.add(newPrefix);
+            basePrefix = incrementIPAddress(basePrefix);
+        }
+        return prefixes;
+    }
+
+    private String incrementIPAddress(String ip) {
+        String[] parts = ip.split("\\.");
+        int lastPart = Integer.parseInt(parts[3]) + 1;
+        return parts[0] + "." + parts[1] + "." + parts[2] + "." + lastPart;
     }
 
     public Mono<Prefix> updatePrefix(String id, Prefix prefix) {

@@ -10,5 +10,5 @@ import java.util.List;
 public interface PrefixService {
 
     Mono<Prefix> createPrefix(Prefix prefix);
-    Mono<ResponseEntity<List<String>>> createMultiplePrefixes(MultiplePrefixes request);
+    Mono<ResponseEntity<List<Prefix>>> createPrefixes(MultiplePrefixes request);
 }

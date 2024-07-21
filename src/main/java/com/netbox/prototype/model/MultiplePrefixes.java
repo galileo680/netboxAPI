@@ -15,7 +15,7 @@ public class MultiplePrefixes {
     private Integer length;
 
     @NotNull
-    private String parentPrefix;
+    private String prefix;
 
 
     public @NotNull @Min(1) Integer getCount() {
@@ -34,12 +34,12 @@ public class MultiplePrefixes {
         this.length = length;
     }
 
-    public @NotNull String getParentPrefix() {
-        return parentPrefix;
+    public String getPrefix() {
+        return prefix;
     }
 
-    public void setParentPrefix(@NotNull String parentPrefix) {
-        this.parentPrefix = parentPrefix;
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
     }
 }
 

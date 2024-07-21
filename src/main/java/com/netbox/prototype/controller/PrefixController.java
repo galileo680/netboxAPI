@@ -38,8 +38,8 @@ public class PrefixController {
 
     // POST Create multiple prefixes
     @PostMapping("create-multiple")
-    public Mono<ResponseEntity<List<String>>> createMultiplePrefixes(@RequestBody MultiplePrefixes multiplePrefixes) {
-        return prefixService.createMultiplePrefixes(multiplePrefixes);
+    public Mono<ResponseEntity<List<Prefix>>> createMultiplePrefixes(@RequestBody MultiplePrefixes multiplePrefixes) {
+        return prefixService.createPrefixes(multiplePrefixes);
     }
 
 }
