@@ -17,9 +17,12 @@ repositories {
 	mavenCentral()
 }
 
+
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	//implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	//implementation("io.github.openfeign:feign-httpclient:$openFeignHttpClient")
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.hibernate.validator:hibernate-validator'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'

@@ -11,4 +11,5 @@ public interface PrefixService {
 
     Mono<Prefix> createPrefix(Prefix prefix);
     Mono<ResponseEntity<List<Prefix>>> createPrefixes(MultiplePrefixes request);
+    Mono<ResponseEntity<List<Prefix>>> createPrefixesParrent(MultiplePrefixes request);
 }

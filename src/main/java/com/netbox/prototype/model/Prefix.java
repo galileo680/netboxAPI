@@ -26,4 +26,12 @@ public class Prefix {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    @Override
+    public String toString() {
+        return "Prefix{" +
+                "prefix='" + prefix + '\'' +
+                ", description='" + description + '\'' +
+                '}';
+    }
 }

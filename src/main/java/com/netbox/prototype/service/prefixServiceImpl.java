@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.lang.Math.pow;
+
 @Service
 public class prefixServiceImpl implements PrefixService {
     private final WebClient webClient;
@@ -66,6 +68,7 @@ public class prefixServiceImpl implements PrefixService {
         }).onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()));
     }
 
+
     private Mono<Prefix> createPrefixInNetBox(String prefix) {
         Prefix prefixObj = new Prefix(prefix, "Description for " + prefix);
         return webClient.post()
@@ -81,11 +84,19 @@ public class prefixServiceImpl implements PrefixService {
 
     private List<String> generatePrefixes(int count, int length, String basePrefix) {
         List<String> prefixes = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
+
+        int power = 32 - length;
+        double multplier = pow(2, power);
+
+        count = count*(int)multplier;
+
+        for (int i = 0; i < count; i+=(int)multplier) {
+            System.out.println(count);
             String newPrefix = basePrefix + "/" + length;
             prefixes.add(newPrefix);
             basePrefix = incrementIPAddress(basePrefix);
         }
+
         return prefixes;
     }
 
@@ -93,6 +104,29 @@ public class prefixServiceImpl implements PrefixService {
         String[] parts = ip.split("\\.");
         int lastPart = Integer.parseInt(parts[3]) + 1;
         return parts[0] + "." + parts[1] + "." + parts[2] + "." + lastPart;
+    }
+
+
+    @Override
+    public Mono<ResponseEntity<List<Prefix>>> createPrefixesParrent(MultiplePrefixes multiplePrefixes) {
+        List<String> availablePrefixes;
+        getAvailablePrefixes(multiplePrefixes.getPrefix(), multiplePrefixes.getLength())
+                .subscribe( prefixes -> {
+                    System.out.println("Available prefixes: " + Arrays.toString(prefixes.toArray()));
+                });
+
+        return Mono.empty();
+    }
+
+    private Mono<List<Prefix>> getAvailablePrefixes(String parentPrefix, int prefixLength){
+
+        int prefixId = 1486;
+
+        return webClient.get()
+                .uri("/prefixes/{id}/available-prefixes/", prefixId)
+                .retrieve()
+                .bodyToFlux(Prefix.class)
+                .collectList();
     }
 
     public Mono<Prefix> updatePrefix(String id, Prefix prefix) {

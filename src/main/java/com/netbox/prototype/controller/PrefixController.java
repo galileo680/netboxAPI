@@ -42,6 +42,12 @@ public class PrefixController {
         return prefixService.createPrefixes(multiplePrefixes);
     }
 
+    // POST Create multiple prefixes based on parrent prefix
+    @PostMapping("create-multiple-parrent")
+    public Mono<ResponseEntity<List<Prefix>>> createMultiplePrefixesParrent(@RequestBody MultiplePrefixes multiplePrefixes){
+        return prefixService.createPrefixesParrent(multiplePrefixes);
+    }
+
 }
 
 
