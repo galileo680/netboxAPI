@@ -108,22 +108,61 @@ public class prefixServiceImpl implements PrefixService {
 
 
     @Override
-    public Mono<ResponseEntity<List<Prefix>>> createPrefixesParrent(MultiplePrefixes multiplePrefixes) {
-        List<String> availablePrefixes;
-        getAvailablePrefixes(multiplePrefixes.getPrefix(), multiplePrefixes.getLength())
-                .subscribe( prefixes -> {
-                    System.out.println("Available prefixes: " + Arrays.toString(prefixes.toArray()));
-                });
+    public Mono<ResponseEntity<List<Prefix>>> createPrefixesParrent(MultiplePrefixes request) {
+        if (request.getCount() <= 0 || request.getLength() <= 0) {
+            return Mono.just(ResponseEntity.badRequest().build());
+        }
 
-        return Mono.empty();
+        // Losowy parent prefix
+        return //getRandomParentPrefix()
+                //.flatMap(parentPrefix ->
+                        getAvailablePrefixes("1489", request.getLength())
+                                .flatMap(availablePrefixes -> {
+                                    // Przygotuj listę child prefixes
+                                    List<Prefix> childPrefixes = availablePrefixes.stream()
+                                            .limit(request.getCount())
+                                            .map(prefix -> new Prefix(prefix.getPrefix(), "Generated child prefix")) // Zakładając, że prefix.getValue() zwraca String
+                                            .collect(Collectors.toList());
+
+                                    // Utwórz Monos dla każdej child prefix
+                                    List<Mono<Prefix>> prefixMonos = childPrefixes.stream()
+                                            .map(this::createPrefix)
+                                            .collect(Collectors.toList());
+
+                                    // Zrób zip na listę Mono
+                                    return Mono.zip(prefixMonos, results -> {
+                                        List<Prefix> createdPrefixes = new ArrayList<>();
+                                        for (Object result : results) {
+                                            if (result instanceof Prefix) {
+                                                createdPrefixes.add((Prefix) result);
+                                            }
+                                        }
+                                        return ResponseEntity.status(HttpStatus.CREATED).body(createdPrefixes);
+                                    }).onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()));
+                                });
+                //);
+    }
+
+    // Metoda do pobrania losowego parent prefix
+    private Mono<String> getRandomParentPrefix() {
+        return webClient.get()
+                .uri("/prefixes/")
+                .retrieve()
+                .bodyToMono(String.class)
+                .map(response -> {
+
+                    return response.split(",")[0];
+                });
     }
 
     private Mono<List<Prefix>> getAvailablePrefixes(String parentPrefix, int prefixLength){
 
-        int prefixId = 1486;
-
         return webClient.get()
-                .uri("/prefixes/{id}/available-prefixes/", prefixId)
+                .uri(uriBuilder -> uriBuilder
+                        .path("/prefixes/{parentPrefix}/available-prefixes/")
+                        .queryParam("prefix_length", prefixLength)
+                        .build(parentPrefix)
+                )
                 .retrieve()
                 .bodyToFlux(Prefix.class)
                 .collectList();
@@ -144,3 +183,41 @@ public class prefixServiceImpl implements PrefixService {
                 .bodyToMono(Void.class);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
