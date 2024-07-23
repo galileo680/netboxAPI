@@ -36,11 +36,6 @@ public class PrefixController {
                 .map(createdPrefix -> ResponseEntity.status(HttpStatus.CREATED).body(createdPrefix));
     }
 
-    // POST Create multiple prefixes
-    @PostMapping("create-multiple")
-    public Mono<ResponseEntity<List<Prefix>>> createMultiplePrefixes(@RequestBody MultiplePrefixes multiplePrefixes) {
-        return prefixService.createPrefixes(multiplePrefixes);
-    }
 
     // POST Create multiple prefixes based on parrent prefix
     @PostMapping("create-multiple-parrent")

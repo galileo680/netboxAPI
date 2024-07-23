@@ -5,6 +5,27 @@ public class Prefix {
     private String prefix;
     private String description;
 
+
+    // nowe
+    private int id;
+    private int depth;
+    private int children;
+
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+
+
+    public Prefix(){
+
+    }
+
     public Prefix(String prefix, String description) {
         //this.id = id;
         this.prefix = prefix;
@@ -25,6 +46,22 @@ public class Prefix {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public void setDepth(int depth) {
+        this.depth = depth;
+    }
+
+    public int getChildren() {
+        return children;
+    }
+
+    public void setChildren(int children) {
+        this.children = children;
     }
 
     @Override
