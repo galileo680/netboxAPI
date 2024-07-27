@@ -9,12 +9,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -46,89 +44,58 @@ public class prefixServiceImpl implements PrefixService {
                 .bodyToMono(Prefix.class);
     }
 
-
-    @Override
-    public Mono<ResponseEntity<List<Prefix>>> createPrefixesParrent(MultiplePrefixes request) {
-        if (request.getCount() <= 0 || request.getLength() <= 0) {
-            return Mono.just(ResponseEntity.badRequest().build());
-        }
-
-        getAllPrefixes()
-                .subscribe(prefixes -> {
-                    System.out.println(prefixes);
-                }, error -> {
-                    System.err.println("Error retrieving prefixes: " + error.getMessage());
-                });
-
-        // Losowy parent prefix
-        return //getRandomParentPrefix()
-                //.flatMap(parentPrefix ->
-                        getAvailablePrefixes("1507", request.getLength())
-                                .flatMap(availablePrefixes -> {
-
-                                    List<Prefix> childPrefixes = availablePrefixes.stream()
-                                            .limit(request.getCount())
-                                            .map(prefix -> new Prefix(prefix.getPrefix(), "Generated child prefix"))
-                                            .collect(Collectors.toList());
-
-                                    List<Mono<Prefix>> prefixMonos = childPrefixes.stream()
-                                            .map(this::createPrefix)
-                                            .collect(Collectors.toList());
-
-                                    return Mono.zip(prefixMonos, results -> {
-                                        List<Prefix> createdPrefixes = new ArrayList<>();
-                                        for (Object result : results) {
-                                            if (result instanceof Prefix) {
-                                                createdPrefixes.add((Prefix) result);
-                                            }
-                                        }
-                                        return ResponseEntity.status(HttpStatus.CREATED).body(createdPrefixes);
-                                    }).onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()));
-                                });
-                //);
-    }
-
-    /*private Mono<String> getRandomParentPrefix() {
-        return webClient.get()
-                .uri("/prefixes/")
-                .retrieve()
-                .bodyToMono(String.class)
-                .map(response -> {
-
-                    return response.split(",")[0];
-                });
-    }*/
-
-    public Mono<List<Prefix>> getAllPrefixes() {
-        return this.webClient.get()
-                .uri("/prefixes/?family=4&limit=10000")
-                .retrieve()
-                .bodyToFlux(PrefixResponse.class)
-                .flatMapIterable(PrefixResponse::getResults)
-                .map(prefixResult -> {
-                    Prefix prefix = new Prefix();
-                    prefix.setId(prefixResult.getId());
-                    prefix.setPrefix(prefixResult.getPrefix());
-                    prefix.setDepth(prefixResult.getDepth());
-                    prefix.setChildren(prefixResult.getChildren());
-
-                    return prefix;
-                })
-                .collectList();
-    }
-
-    private Mono<List<Prefix>> getAvailablePrefixes(String parentPrefix, int prefixLength){
-
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/prefixes/{parentPrefix}/available-prefixes/")
-                        .queryParam("prefix_length", prefixLength)
-                        .build(parentPrefix)
+    public Mono<Void> createChildPrefixes() {
+        return getAllPrefixes()
+                .flatMapMany(Flux::fromIterable)
+                .filter(prefix -> prefix.getDepth() > 0)
+                .flatMap(prefix -> Flux.range(1, 100) // 100 oznacza liczbę powtórzeń
+                        .flatMap(i -> createAvailablePrefixes(prefix.getId(), 32))
+                        .then() // Kiedy wszystkie operacje zakończą się to kontynuuj
                 )
+                .then();
+    }
+
+
+
+    private Mono<List<Prefix>> createAvailablePrefixes(int parentId, int prefixLength) {
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("prefix_length", prefixLength);
+        requestBody.put("description", "Generated child prefix");
+
+        return this.webClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/prefixes/{id}/available-prefixes/")
+                        .build(parentId)
+                )
+                .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(Prefix.class)
-                .collectList();
+                .collectList()
+                .onErrorResume(e -> {
+                    System.err.println("Error creating child prefixes for parent prefix ID " + parentId + ": " + e.getMessage());
+                    return Mono.empty();
+                });
     }
+
+
+    public Mono<List<Prefix>> getAllPrefixes() {
+            return this.webClient.get()
+                    .uri("/prefixes/?limit=10000")  // family=4&
+                    .retrieve()
+                    .bodyToFlux(PrefixResponse.class)
+                    .flatMapIterable(PrefixResponse::getResults)
+                    .map(prefixResult -> {
+                        Prefix prefix = new Prefix();
+                        prefix.setId(prefixResult.getId());
+                        prefix.setPrefix(prefixResult.getPrefix());
+                        prefix.setDepth(prefixResult.getDepth());
+                        prefix.setChildren(prefixResult.getChildren());
+                        prefix.setDescription(prefixResult.getDescription());
+                        return prefix;
+                    })
+                    .collectList();
+    }
+
 
     public Mono<Prefix> updatePrefix(String id, Prefix prefix) {
         return this.webClient.put()

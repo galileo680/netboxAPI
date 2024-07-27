@@ -69,6 +69,9 @@ public class Prefix {
         return "Prefix{" +
                 "prefix='" + prefix + '\'' +
                 ", description='" + description + '\'' +
+                ", id=" + id +
+                ", depth=" + depth +
+                ", children=" + children +
                 '}';
     }
 }

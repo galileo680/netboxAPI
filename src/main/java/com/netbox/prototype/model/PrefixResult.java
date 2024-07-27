@@ -5,6 +5,7 @@ public class PrefixResult {
     private String prefix;
     private int _depth;
     private int children;
+    private String description;
 
     // Getters and setters
     public int getId() {
@@ -37,5 +38,21 @@ public class PrefixResult {
 
     public void setChildren(int children) {
         this.children = children;
+    }
+
+    public int get_depth() {
+        return _depth;
+    }
+
+    public void set_depth(int _depth) {
+        this._depth = _depth;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
