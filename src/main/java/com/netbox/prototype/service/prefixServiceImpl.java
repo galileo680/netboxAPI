@@ -43,11 +43,28 @@ public class prefixServiceImpl implements PrefixService {
         return getAllPrefixes()
                 .flatMapMany(Flux::fromIterable)
                 .filter(prefix -> prefix.getDepth() > 0 && getMaskLength(prefix.getPrefix()) != 32)
-                .concatMap(prefix -> Flux.range(1, 100) // 100 oznacza liczbę powtórzeń dla danego prefixu
-                        .concatMap(i -> createAvailablePrefixes(prefix.getId(), 32))
-                        .then() // Kiedy wszystkie operacje zakończą się to kontynuuj
+                .flatMap(prefix ->
+
+                        Flux.range(1, 1000) // 100 oznacza liczbę powtórzeń dla danego prefixu
+                                .concatMap(i -> createAvailablePrefixes(prefix.getId(), 64)
+                                                /*.onErrorResume(e -> {
+                                                    System.err.println("1. Error for prefix " + prefix.getPrefix() + " with ID: " + prefix.getId() + " on iteration " + i + ": " + e.getMessage());
+                                                    return Mono.empty();
+                                                })*/
+                                )
+                                //.then()
+                                /*.onErrorResume(e -> {
+                                    System.err.println("2. Error creating child prefixes for parent prefix ID " + prefix.getId() + ": " + e.getMessage());
+                                    return Mono.empty();
+                                })*/
+
                 )
                 .then();
+                /*.onErrorResume(e -> {
+                    System.err.println("3. Error creating child prefixes for parrent prefix" + e.getMessage());
+                    return Mono.empty();
+                });*/
+
     }
 
 
@@ -79,7 +96,7 @@ public class prefixServiceImpl implements PrefixService {
 
     public Mono<List<Prefix>> getAllPrefixes() {
             return this.webClient.get()
-                    .uri("/prefixes/?limit=10000")  // family=4&
+                    .uri("/prefixes/?family=6&limit=10000")  // family=4&
                     .retrieve()
                     .bodyToFlux(PrefixResponse.class)
                     .flatMapIterable(PrefixResponse::getResults)
