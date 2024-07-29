@@ -1,22 +1,17 @@
 package com.netbox.prototype.service;
 
-import com.netbox.prototype.model.MultiplePrefixes;
 import com.netbox.prototype.model.Prefix;
 import com.netbox.prototype.model.PrefixResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static java.lang.Math.pow;
 
 @Service
 public class prefixServiceImpl implements PrefixService {
@@ -47,9 +42,9 @@ public class prefixServiceImpl implements PrefixService {
     public Mono<Void> createChildPrefixes() {
         return getAllPrefixes()
                 .flatMapMany(Flux::fromIterable)
-                .filter(prefix -> prefix.getDepth() > 0)
-                .flatMap(prefix -> Flux.range(1, 100) // 100 oznacza liczbę powtórzeń
-                        .flatMap(i -> createAvailablePrefixes(prefix.getId(), 32))
+                .filter(prefix -> prefix.getDepth() > 0 && getMaskLength(prefix.getPrefix()) != 32)
+                .concatMap(prefix -> Flux.range(1, 100) // 100 oznacza liczbę powtórzeń dla danego prefixu
+                        .concatMap(i -> createAvailablePrefixes(prefix.getId(), 32))
                         .then() // Kiedy wszystkie operacje zakończą się to kontynuuj
                 )
                 .then();
@@ -69,6 +64,10 @@ public class prefixServiceImpl implements PrefixService {
                 )
                 .bodyValue(requestBody)
                 .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
+                    // Handle 4xx client errors
+                    return clientResponse.createException().flatMap(Mono::error);
+                })
                 .bodyToFlux(Prefix.class)
                 .collectList()
                 .onErrorResume(e -> {
@@ -96,6 +95,17 @@ public class prefixServiceImpl implements PrefixService {
                     .collectList();
     }
 
+    private int getMaskLength(String prefix) {
+        String[] parts = prefix.split("/");
+        if (parts.length > 1) {
+            try {
+                return Integer.parseInt(parts[1]);
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid mask length format in prefix: " + prefix);
+            }
+        }
+        return -1;
+    }
 
     public Mono<Prefix> updatePrefix(String id, Prefix prefix) {
         return this.webClient.put()
